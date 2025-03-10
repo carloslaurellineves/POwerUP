@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from langchain.chat_models import AzureChatOpenAI
-from langchain.schema import HumanMessage
+from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from prompts import PROMPTS
 
 # Configuração da chave da OpenAI na barra lateral
@@ -17,15 +17,15 @@ st.write("Aqui você pode conversar sobre épicos, histórias e tarefas!")
 
 # Inicializar o histórico específico do assistente no session_state
 ASSISTANT_ID = "epic_story_task"  # ID único para o assistente
-selected_prompt = PROMPTS[ASSISTANT_ID]  # Prompt selecionado
+selected_prompt = PROMPTS[ASSISTANT_ID]  # Prompt especializado do assistente
 
 if ASSISTANT_ID not in st.session_state:
     st.session_state[ASSISTANT_ID] = [
-        {"role": "system", "content": selected_prompt},
+        {"role": "system", "content": selected_prompt},  # Instrução do sistema
         {"role": "assistant", "content": "No que posso te ajudar?"}
     ]
 
-# Exibir mensagens anteriores (exceto a system message)
+# Exibir mensagens anteriores (exceto a system message na UI)
 for msg in st.session_state[ASSISTANT_ID]:
     if msg["role"] != "system":
         with st.chat_message(msg["role"]):
@@ -52,7 +52,14 @@ if user_input:
     )
 
     # Converter histórico para formato do Langchain
-    messages = [HumanMessage(content=msg["content"]) for msg in st.session_state[ASSISTANT_ID] if msg["role"] != "system"]
+    messages = []
+    for msg in st.session_state[ASSISTANT_ID]:
+        if msg["role"] == "system":
+            messages.append(SystemMessage(content=msg["content"]))
+        elif msg["role"] == "user":
+            messages.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "assistant":
+            messages.append(AIMessage(content=msg["content"]))
 
     # Obter resposta do modelo
     response = llm.invoke(messages)
